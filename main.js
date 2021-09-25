@@ -1,48 +1,67 @@
-// main.js
+const { app, BrowserWindow, nativeImage } = require("electron");
 
-// Modules to control application life and create native browser window
-const { app, BrowserWindow } = require('electron')
-const path = require('path')
+// Habilita o live reload no Electron e no FrontEnd da aplicação com a lib electron-reload
+// Assim que alguma alteração no código é feita
+require("electron-reload")(__dirname, {
+  // Note that the path to electron may vary according to the main file
+  electron: require(`${__dirname}/node_modules/electron`),
+});
 
-function createWindow () {
-  // Create the browser window.
-  const mainWindow = new BrowserWindow({
+// Função que cria uma janela desktop
+function createWindow() {
+  // Adicionando um ícone na barra de tarefas/dock
+  const icon = nativeImage.createFromPath(`${app.getAppPath()}/build/icon.png`);
+
+  if (app.dock) {
+    app.dock.setIcon(icon);
+  }
+
+  // Cria uma janela de desktop
+  const win = new BrowserWindow({
+    icon,
     width: 800,
     height: 600,
-    autoHideMenuBar: true,
-    center: true,
+	center: true,
     webPreferences: {
-      preload: path.join(__dirname, 'preload.js')
-	  
-    }
-  })
+      // habilita a integração do Node.js no FrontEnd
+      nodeIntegration: true,
+    },
+  });
 
-  // and load the index.html of the app.
-  mainWindow.loadFile('index.html')
+  // carrega a janela com o conteúdo dentro de index.html
+  win.loadFile("./src/index.html");
 
-  // Open the DevTools.
-  // mainWindow.webContents.openDevTools()
+  // Abre o console do navegador (DevTools),
+  // manter apenas quando estiver desenvolvendo a aplicação,
+  // pode utilizar variáveis de ambiente do node para executar esse código apenas quando estiver em modo DEV
+  // win.webContents.openDevTools();
 }
 
-// This method will be called when Electron has finished
-// initialization and is ready to create browser windows.
+// Método vai ser chamado assim que o Electron finalizar sua inicialização
+// e estiver pronto para abrir e manipular o nosso código.
 // Algumas APIs podem ser usadas somente depois que este evento ocorre.
-app.whenReady().then(() => {
-  createWindow()
+app.whenReady().then(createWindow);
 
-  app.on('activate', function () {
-    // On macOS it's common to re-create a window in the app when the
-    // dock icon is clicked and there are no other windows open.
-    if (BrowserWindow.getAllWindows().length === 0) createWindow()
-  })
-})
+// Quando clicarmos no botão de fechar a janela no app desktop
+// O evento vai ser ouvido aqui no arquivo main.js e algum procedimento pode ser realizado
+// tipo fechar alguma conexão de banco de dados por exemplo.
+app.on("window-all-closed", () => {
+  // No MacOS quando fecha uma janela, na verdade ela é "minimizada"
+  // e o processo executa em segundo-plano tipo um app do celular
+  // Para fechar e encerrar o app tem que teclar Cmd+Q ou no dock (barra de tarefas)
+  // clicar com botão direito e encerrar o app
+  if (process.platform !== "darwin") {
+    app.quit();
+  }
+});
 
-// Quit when all windows are closed, except on macOS. There, it's common
-// for applications and their menu bar to stay active until the user quits
-// explicitly with Cmd + Q.
-app.on('window-all-closed', function () {
-  if (process.platform !== 'darwin') app.quit()
-})
+app.on("activate", () => {
+  // Esse evento é disparado pelo MacOS quando clica no ícone do aplicativo no Dock.
+  // Basicamente cria a janela se não foi criada.
+  if (BrowserWindow.getAllWindows().length === 0) {
+    createWindow();
+  }
+});
 
-// In this file you can include the rest of your app's specific main process
-// code. Você também pode colocar eles em arquivos separados e requeridos-as aqui.
+// Abaixo você pode colocar seus códigos específicos do BackEnd que precisam executar no processo principal
+// pode criar pastas e arquivos separados e importar aqui (boa prática).
